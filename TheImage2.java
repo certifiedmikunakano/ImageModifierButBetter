@@ -1,3 +1,4 @@
+package test;
 import java.util.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -898,7 +899,6 @@ public class TheImage2 {
 			  }
 
 			  for (BufferedImage bi : origRow) {
-				  System.out.println(computeAverage(bi));
 			  }
 			  
 			  System.out.println();
@@ -909,9 +909,7 @@ public class TheImage2 {
 			  //this for loop used for testing - outputs the correct and
 			  //expected values for scrambledRow
 			  for (int k = 0; k < safePrime - 1; k++) {
-				  System.out.println(computeAverage(scrambledRow.get(k)));
 			  }
-			  System.out.println();
 			  
 			  for (int j = 0; j < safePrime - 1; j++) {
 				  BufferedImage newImage = scrambledRow.get(j);
@@ -921,7 +919,6 @@ public class TheImage2 {
 				  //computeAverage function does NOT change either newImage or scrambledRow
 				  //nor did I ever change the scrambledRow arraylist in between this loop and line #1
 				  //does .get somehow change the arraylist values?
-				  System.out.println(computeAverage(newImage)); 
 				  
 				  m.setPixel(j, y, newImage);
 				  
@@ -1137,6 +1134,239 @@ public static BufferedImage mosaicUnscrambleRows (BufferedImage original, int pr
  		  unscrambled = m.getMosaic();
  		  return unscrambled;
    	}
+ 	
+ 	public void circularEncrypt (int dim) throws IOException{
+		  Random random = new Random();
+		 int width = dim;    //width of the image
+		 int height = dim;   //height of the image
+		 //generate the primitive roots mod safePrime
+		 
+		 ArrayList <Integer> proots = new ArrayList <Integer> ();
+		 for (int i = 0; i < (safePrime - 1); i++) {
+			  proots.add(i);
+		 }
+		 for (int i = 0; i < safePrime; i++) {
+			  int j = proots.indexOf((i*i) % safePrime);
+			  if (j != -1) {
+				  proots.remove(j);
+			  }
+			 
+		 }
+		 int randomIndex = random.nextInt(proots.size());
+
+		 int proot = proots.get(randomIndex);
+		 
+		 
+		 File f = null;
+		 
+		 //read image
+		 try{
+		 f = new File(fileName); //image file path
+		 rawImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		 rawImage = ImageIO.read(f);
+		 image = resizeImage(rawImage, width, height);
+		 System.out.println("Reading complete.");
+		 }catch(IOException e){
+		 System.out.println("Error: "+e);
+		 }
+		 
+		 makeIntoCircle();
+		 BufferedImage scrambledImage = circularScramble(image, proot);
+
+		 System.out.println("Image Scrambled.");
+		 
+		 image = scrambledImage;
+
+		 ImageIO.write(image, "png", f);
+		 System.out.println("Image writing complete.");
+		 
+		 		 
+		 System.out.println("Your decryption code is: \n" + proot + ". \nKeep this code to yourself but don't lose it!");
+		      
+		 
+ 	}
+ 	
+ 	public void circularDecrypt (int dim) throws IOException{
+ 	   	 int width = dim;    //width of the image
+ 	   	 int height = dim;   //height of the image
+ 	   	 BufferedImage image = null;
+ 	   	 File f = null;
+ 	   	 Scanner scan = new Scanner(System.in);
+ 	  	 
+ 	   	 //read image
+ 	   	 try{
+ 	 		 f = new File(fileName); //image file path
+ 	 		 BufferedImage rawImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+ 	 		 rawImage = ImageIO.read(f);
+ 	 		 image = resizeImage(rawImage, width, height);
+ 	 		 System.out.println("Reading complete.");
+ 	   	 }catch(IOException e){
+ 	 		 System.out.println("Error: "+e);
+ 	   	 }
+ 	  	 
+ 	   	 System.out.println("Enter the decryption code for that image: ");
+ 	  	 
+ 	   	 int root = scan.nextInt();
+
+ 	  	 
+ 	   	 BufferedImage unscrambledImage = circularUnscramble (image, root);
+ 	 
+
+ 	   	 System.out.println("Image unscrambled.");
+ 	  	 
+ 	  					 
+ 	   	 ImageIO.write(unscrambledImage, "png", f);
+ 	   	 System.out.println("Writing complete.");
+ 	   	 
+ 	   	 image = unscrambledImage;
+ 	 		      
+ 	 		 
+ 	     	}
+ 	
+ 	public void makeIntoCircle () {
+ 		
+ 		int dim = image.getHeight();
+ 		for (int x = 0; x < dim; x++ ) {
+ 			for (int y = 0; y < dim; y++ ) {
+ 	 			double minecraft = Math.sqrt(Math.pow(x - (dim / 2), 2) + Math.pow(y - (dim / 2), 2));
+ 	 			if (minecraft > (dim / 2)) {
+ 	 				image.setRGB(x, y, 0);
+ 	 			}
+ 	 		}
+ 		}
+ 		
+ 		
+ 	}
+ 	
+ 	public BufferedImage circularScramble (BufferedImage orig, int pr) {
+ 		BufferedImage scrambled = orig;
+ 		int sectors = safePrime - 1;
+ 		int dim = orig.getHeight();
+ 		for (int r = 0; r < (dim / 2); r++) {
+ 			
+ 			double increment = 360.0 / (2 * r * Math.PI);
+ 			for (double theta = 0; theta < (360.0 / sectors); theta += increment) {
+ 				ArrayList<Integer> origColors = new ArrayList<Integer> ();
+ 				
+ 				for (int i = 0; i < sectors; i++) {
+ 					int ecks = getXFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					int why = getYFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					origColors.add(orig.getRGB(ecks, why));
+ 				}
+ 				
+ 				ArrayList<Integer> scrambledColors = circEncrypt(origColors, pr);
+ 				
+ 				for (int i = 0; i < sectors; i++) {
+ 					int ecks = getXFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					int why = getYFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					scrambled.setRGB(ecks, why, scrambledColors.get(i));
+ 				}
+ 			}
+ 			
+ 		}
+ 		
+ 		return scrambled;
+ 			
+ 		
+ 		
+ 	}
+ 	
+ 	public BufferedImage circularUnscramble (BufferedImage orig, int pr) {
+ 		BufferedImage unscrambled = orig;
+ 		int sectors = safePrime - 1;
+ 		int dim = orig.getHeight();
+ 		for (int r = 0; r < (dim / 2); r++) {
+ 			double increment = 360.0 / (2 * r * Math.PI);
+ 			for (double theta = 0; theta < (360.0 / sectors); theta += increment) {
+ 				ArrayList<Integer> origColors = new ArrayList<Integer> ();
+ 				
+ 				for (int i = 0; i < sectors; i++) {
+ 					int ecks = getXFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					int why = getYFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					origColors.add(orig.getRGB(ecks, why));
+ 				}
+ 				
+ 				ArrayList<Integer> unscrambledColors = circDecrypt(origColors, pr);
+ 				
+ 				for (int i = 0; i < sectors; i++) {
+ 					int ecks = getXFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					int why = getYFromPolar (r, theta + (360.0 / sectors)*i, dim);
+ 					unscrambled.setRGB(ecks, why, unscrambledColors.get(i));
+ 				}
+ 			}
+ 			
+ 		}
+ 		
+ 		return unscrambled;
+ 			
+ 		
+ 		
+ 	}
+ 	
+ 	private int getXFromPolar (int r, double theta, int dim) {
+ 		double thetaInRadians = Math.toRadians(theta);
+ 		int unshiftedX = (int) (r * Math.cos(thetaInRadians));
+ 		int returnedValue = unshiftedX + (dim / 2);
+ 		
+ 		if (returnedValue < 0) {
+ 			int offset = 0 - returnedValue;
+ 			returnedValue += offset;
+ 		}
+ 		
+ 		if (returnedValue >= dim) {
+ 			int offset = returnedValue - (dim - 1);
+ 			returnedValue -= offset;
+ 		}
+ 		
+ 		return returnedValue; 
+ 	}
+ 	
+	private int getYFromPolar (int r, double theta, int dim) {
+ 		double thetaInRadians = Math.toRadians(theta);
+ 		int unshiftedY = (int) (r * Math.sin(thetaInRadians));
+ 		int returnedValue = unshiftedY + (dim / 2);
+ 		
+ 		if (returnedValue < 0) {
+ 			int offset = 0 - returnedValue;
+ 			returnedValue += offset;
+ 		}
+ 		
+ 		if (returnedValue >= dim) {
+ 			int offset = returnedValue - (dim - 1);
+ 			returnedValue -= offset;
+ 		}
+
+ 		return returnedValue; 
+ 	}
+	
+	private static ArrayList<Integer> circEncrypt (ArrayList <Integer> original, int pr) {
+  	  ArrayList<Integer> newArr = new ArrayList<Integer>();
+  	  for (int i = 0; i < original.size(); i++) {
+  		  newArr.add(original.get(prToThe(pr, i) - 1));
+
+  	  }
+  	  return newArr;
+	}
+	
+	public static ArrayList<Integer> circDecrypt (ArrayList <Integer> original, int pr) {
+		  ArrayList<Integer> newArr = new ArrayList<Integer>();
+		  for (int i = 0; i < original.size(); i++) {
+			 
+			  newArr.add(original.get(discreteLogBasePrModsafePrime_(pr, i+1) % (safePrime - 1)));
+		  }
+		  return newArr;
+ 	}
+ 	
+ 	private ArrayList<Integer> shiftedCoords (int x, int y, int dim) {
+ 		ArrayList<Integer> returnedArray = new ArrayList<Integer>();
+ 		returnedArray.add(x - (int) (dim / 2));
+ 		returnedArray.add(y - (int) (dim / 2));
+ 		return returnedArray;
+ 	}
+ 	
+ 	
+ 	
+ 	
 
 }
 
@@ -1222,7 +1452,6 @@ class Mosaic {
 	    }
 		
 	}
-
 
 
 
